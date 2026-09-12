@@ -11,24 +11,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download PokeRogue Offline Assets
+      - name: Download PokeRogue Offline Game Data
         run: |
           mkdir -p build/pokerogue/game
-          echo "Descargando release offline..."
-          ZIP_URL=$(curl -s https://api.github.com/repos/Admiral-Billy/Pokerogue-App/releases/latest | grep -o 'https://[^"]*Pokerogue[^"]*\.zip' | head -n 1)
-          if [ -z "$ZIP_URL" ]; then
-            ZIP_URL="https://github.com/Admiral-Billy/Pokerogue-App/releases/latest/download/Pokerogue.zip"
-          fi
-          echo "URL: $ZIP_URL"
-          curl -L -o pokerogue.zip "$ZIP_URL" || true
-          if [ -f pokerogue.zip ] && unzip -tq pokerogue.zip; then
-            unzip -q pokerogue.zip -d build/pokerogue/game
-          else
-            echo "Fallback: clonando codigo web..."
-            git clone --depth 1 https://github.com/pagefaultgames/pokerogue.git build/pokerogue/game
-          fi
+          echo "Descargando el juego offline real (game.zip de ~500MB)..."
+          curl -L -o game.zip https://github.com/Admiral-Billy/pokerogue/releases/download/release-e4e9b53/game.zip
+          unzip -q game.zip -d build/pokerogue/game
+          rm game.zip
 
-      - name: Package Runtime and muOS launcher
+      - name: Package muOS Port Structure
         run: |
           mkdir -p build/pokerogue/bin
           mkdir -p build/pokerogue/libs
@@ -41,7 +32,7 @@ jobs:
 
           echo "[port]" > build/pokerogue/pokerogue.ini
           echo "title=PokeRogue" >> build/pokerogue/pokerogue.ini
-          echo "desc=Pokemon Roguelike Web Port" >> build/pokerogue/pokerogue.ini
+          echo "desc=Pokemon Roguelike Offline Port" >> build/pokerogue/pokerogue.ini
           echo "version=1.0" >> build/pokerogue/pokerogue.ini
 
       - name: Create Release Zip
