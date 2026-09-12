@@ -1,0 +1,56 @@
+name: Build PokeRogue for muOS (aarch64)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for aarch64
+        uses: docker/setup-qemu-action@v3
+
+      - name: Download PokeRogue Offline Assets
+        run: |
+          mkdir -p build/pokerogue/game
+          echo "Descargando la última versión web de PokeRogue..."
+          curl -L -o pokerogue.zip https://github.com/Admiral-Billy/Pokerogue-App/releases/latest/download/Pokerogue.zip || true
+          if [ -f pokerogue.zip ]; then
+            unzip -q pokerogue.zip -d build/pokerogue/game
+          else
+            echo "Descarga alternativa de assets web..."
+            git clone --depth 1 https://github.com/pagefaultgames/pokerogue.git build/pokerogue/game
+          fi
+
+      - name: Package Runtime and muOS launcher
+        run: |
+          mkdir -p build/pokerogue/bin
+          mkdir -p build/pokerogue/libs
+
+          # Copiar script de arranque
+          cp Pokerogue.sh build/pokerogue/
+          chmod +x build/pokerogue/Pokerogue.sh
+
+          # Crear descriptor para el menú de Ports en muOS
+          cat << 'EOF' > build/pokerogue/pokerogue.ini
+          [port]
+          title=PokeRogue
+          desc=Pokemon Roguelike Web Port for muOS
+          author=Port
+          version=1.0
+          EOF
+
+      - name: Create Release Zip
+        run: |
+          cd build
+          zip -r9 ../pokerogue-muos-aarch64.zip pokerogue/
+
+      - name: Upload Port Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pokerogue-muos-aarch64
+          path: pokerogue-muos-aarch64.zip
