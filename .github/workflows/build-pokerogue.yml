@@ -34,11 +34,54 @@ jobs:
           mkdir -p build/pokerogue/bin
           mkdir -p build/pokerogue/libs
 
-          # Copiar script de arranque
-          cp Pokerogue.sh build/pokerogue/
+          # Copiar Pokerogue.sh buscando en la raíz o en subcarpetas, o crearlo si falta
+          if [ -f "Pokerogue.sh" ]; then
+            cp Pokerogue.sh build/pokerogue/
+          elif [ -f "PORT_POKEROGUE/Pokerogue.sh" ]; then
+            cp PORT_POKEROGUE/Pokerogue.sh build/pokerogue/
+          else
+            echo "Generando Pokerogue.sh automático..."
+            cat << 'EOF' > build/pokerogue/Pokerogue.sh
+#!/bin/bash
+DIR="$(dirname "$(readlink -f "$0")")"
+cd "$DIR" || exit 1
+LOG="$DIR/pokerogue.log"
+exec > >(tee -a "$LOG") 2>&1
+
+echo "Iniciando PokeRogue en muOS..."
+SWAP_FILE="$DIR/swapfile"
+if [ ! -f "$SWAP_FILE" ]; then
+    echo "Creando archivo SWAP de 1GB..."
+    dd if=/dev/zero of="$SWAP_FILE" bs=1M count=1024
+    mkswap "$SWAP_FILE"
+fi
+swapon "$SWAP_FILE" 2>/dev/null
+
+export LD_LIBRARY_PATH="$DIR/libs:$LD_LIBRARY_PATH"
+export SDL_VIDEODRIVER=kmsdrm
+
+PORT=8089
+python3 -m http.server $PORT --directory "$DIR/game" &
+SERVER_PID=$!
+sleep 1
+
+if [ -f "$DIR/bin/cog" ]; then
+    "$DIR/bin/cog" --platform=drm "http://127.0.0.1:$PORT" &
+    GAME_PID=$!
+elif [ -f "$DIR/bin/wpe-launcher" ]; then
+    "$DIR/bin/wpe-launcher" "http://127.0.0.1:$PORT" &
+    GAME_PID=$!
+fi
+
+wait "$GAME_PID"
+kill "$SERVER_PID" 2>/dev/null
+swapoff "$SWAP_FILE" 2>/dev/null
+EOF
+          fi
+
           chmod +x build/pokerogue/Pokerogue.sh
 
-          # Crear descriptor para el menú de Ports en muOS
+          # Crear descriptor para muOS
           cat << 'EOF' > build/pokerogue/pokerogue.ini
           [port]
           title=PokeRogue
