@@ -17,12 +17,15 @@ jobs:
       - name: Download PokeRogue Offline Assets
         run: |
           mkdir -p build/pokerogue/game
-          echo "Descargando la última versión web de PokeRogue..."
-          curl -L -o pokerogue.zip https://github.com/Admiral-Billy/Pokerogue-App/releases/latest/download/Pokerogue.zip || true
-          if [ -f pokerogue.zip ]; then
+          echo "Buscando la última versión en GitHub Releases..."
+          ASSET_URL=$(curl -s https://api.github.com/repos/Admiral-Billy/Pokerogue-App/releases/latest | grep "browser_download_url.*zip" | cut -d : -f 2,3 | tr -d \" | head -n 1)
+          
+          if [ -n "$ASSET_URL" ]; then
+            echo "Descargando desde: $ASSET_URL"
+            curl -L -o pokerogue.zip $ASSET_URL
             unzip -q pokerogue.zip -d build/pokerogue/game
           else
-            echo "Descarga alternativa de assets web..."
+            echo "Descargando repositorio directo..."
             git clone --depth 1 https://github.com/pagefaultgames/pokerogue.git build/pokerogue/game
           fi
 
